@@ -8,6 +8,11 @@ serverPort = 12000
 clientSocket = socket(AF_INET, SOCK_STREAM)
 clientSocket.connect((serverName, serverPort))
 
+acknowledgement = clientSocket.recv(1024).decode()
+stdout.write(f"{acknowledgement}")
+
+user = ""
+
 sockets = [clientSocket, stdin]
 
 while True:
@@ -21,17 +26,28 @@ while True:
                     stdout.write("Server closed, shutting down app")
                     stdout.flush()
                     exit()
-                stdout.write(f"[Server] {data}")
-                stdout.flush()
+                elif data == '%0%':
+                    stdout.write(f"\"{user}\" was already taken, please pick another name: ")
+                    stdout.flush()
+                    user = ""
+                # elif user != "":
+                else:
+                    stdout.write(f"{data}")
+                    stdout.flush()
             else:
                 s.close()
         elif s == stdin:
-            message = stdin.readline()
-            clientSocket.send(message.encode())
-            stdout.write(f"[Client] {message}")
-            stdout.flush()
-            if message.strip().lower() == "exit":
-                stdout.write(f"Disconnecting from {clientSocket.getpeername()}")
+            if user == "":
+                user = stdin.readline().strip()
+                # TODO: check for valid username
+                clientSocket.send(("%try_user%" + user).encode())
+            else:
+                message = stdin.readline()
+                clientSocket.send(message.encode())
+                if message.strip().lower() == "exit":
+                    stdout.write(f"Disconnecting from {clientSocket.getpeername()} \n")
+                    stdout.flush()
+                    clientSocket.close()
+                    exit()
+                stdout.write(f"[{user}] {message}")
                 stdout.flush()
-                clientSocket.close()
-                exit()
