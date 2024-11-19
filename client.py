@@ -1,15 +1,24 @@
 from socket import socket, AF_INET, SOCK_STREAM
 from select import select
 from sys import stdin, stdout, exit
+from datetime import datetime
+
+def sout(msg): # ease
+    stdout.write(f"[{datetime.now().strftime('%I:%M:%S %p')}] {msg}")
+    stdout.flush()
 
 serverName = ''
 serverPort = 12000
 
 clientSocket = socket(AF_INET, SOCK_STREAM)
-clientSocket.connect((serverName, serverPort))
+try:
+    clientSocket.connect((serverName, serverPort))
+except Exception:
+    sout("Connection was unsuccesful, ceasing process.")
+    exit()
 
 acknowledgement = clientSocket.recv(1024).decode()
-stdout.write(f"{acknowledgement}")
+sout(f"{acknowledgement}")
 
 user = ""
 
@@ -23,17 +32,13 @@ while True:
             data = s.recv(1024).decode()
             if data:
                 if data.strip().lower() == 'exit':
-                    stdout.write("Server closed, shutting down app")
-                    stdout.flush()
+                    sout("Server closed, shutting down app")
                     exit()
                 elif data == '%0%':
-                    stdout.write(f"\"{user}\" was already taken, please pick another name: ")
-                    stdout.flush()
+                    sout(f"\"{user}\" was already taken, please pick another name: ")
                     user = ""
-                # elif user != "":
-                else:
-                    stdout.write(f"{data}")
-                    stdout.flush()
+                elif user != "":
+                    sout(f"{data}")
             else:
                 s.close()
         elif s == stdin:
@@ -45,9 +50,7 @@ while True:
                 message = stdin.readline()
                 clientSocket.send(message.encode())
                 if message.strip().lower() == "exit":
-                    stdout.write(f"Disconnecting from {clientSocket.getpeername()} \n")
-                    stdout.flush()
+                    sout(f"Disconnecting from {clientSocket.getpeername()} \n")
                     clientSocket.close()
                     exit()
-                stdout.write(f"[{user}] {message}")
-                stdout.flush()
+                sout(f"[{user}] {message}")
