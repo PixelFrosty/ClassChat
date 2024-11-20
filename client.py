@@ -31,7 +31,7 @@ while True:
         if s == clientSocket:
             data = s.recv(1024).decode()
             if data:
-                if data.strip().lower() == 'exit':
+                if data.strip().lower() == '/exit':
                     sout("Server closed, shutting down app")
                     exit()
                 elif data == '%0%':
@@ -49,8 +49,13 @@ while True:
             else:
                 message = stdin.readline()
                 clientSocket.send(message.encode())
-                if message.strip().lower() == "exit":
-                    sout(f"Disconnecting from {clientSocket.getpeername()} \n")
-                    clientSocket.close()
-                    exit()
-                sout(f"[{user}] {message}")
+                if message.strip().lower()[:1] == "/":
+                    match message.strip().lower()[1:]:
+                        case "exit":
+                            sout(f"Disconnecting from {clientSocket.getpeername()} \n")
+                            clientSocket.close()
+                            exit()
+                        case "pass":
+                            pass
+                        case _:
+                            sout(f"[{user}] {message}")

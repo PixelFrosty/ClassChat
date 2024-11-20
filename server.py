@@ -16,6 +16,17 @@ serverSocket.bind((serverName,serverPort))
 sockets = [serverSocket, stdin]
 user_list = {}
 
+def getUsers():
+    if len(user_list) == 0:
+        return "No users currently online.\n"
+        
+    i = 1
+    result = "List of online users:\n"
+    for u in user_list.values():
+        result += f"[{i}] {u}\n"
+        i += 1
+    return result
+
 def sout(msg): # ease
     stdout.write(f"[{datetime.now().strftime('%I:%M:%S %p')}] {msg}")
     stdout.flush()
@@ -63,16 +74,27 @@ while True:
 
             elif s == stdin:
                 message = stdin.readline()
-                if message.strip().lower() == "exit":
-                    sendToAll(message)
-                    sout("Closing Server\n")
-                    for c in sockets:
-                        if c != serverSocket and c != stdin:
-                            removeUser(c, 1)
-                    s.close()
-                    exit()
-                else:
-                    sendToAll("[Server] " + message, serverSocket, 1)
+                if message.strip().lower()[:1] == "/":
+                    match message.strip().lower()[1:]:
+                        case "exit":
+                            sendToAll(message)
+                            sout("Closing Server\n")
+                            for c in sockets:
+                                if c != serverSocket and c != stdin:
+                                    removeUser(c, 1)
+                            s.close()
+                            exit()
+                        case "help":
+                            sout(
+                                    "List of commands:\n"
+                                    "/help - Show a list of commands.\n"
+                                    "/ls - Show all online users.\n"
+                                    "/exit - Disconnect all users and close the server.\n"
+                                 )
+                        case "ls":
+                            sout(getUsers())
+                        case _:
+                            sout("Invalid command. Try /help for command list\n")
             else:
                 try:
                     data = s.recv(1024).decode()
