@@ -3,14 +3,11 @@ from select import select
 from sys import stdin, stdout, exit
 from datetime import datetime
 
-# 12000 = TCP socket
-# AF_INET for IPV4 address family, SOCK_STREAM for TCP
-
 serverPort = 12000 
 serverName = ''
 
 serverSocket = socket(AF_INET, SOCK_STREAM)
-serverSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1) # without this, socket takes time before usable
+serverSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 serverSocket.bind((serverName,serverPort))
 
 sockets = [serverSocket, stdin]
@@ -30,6 +27,13 @@ def getUsers():
 def sout(msg): # ease
     stdout.write(f"[{datetime.now().strftime('%I:%M:%S %p')}] {msg}")
     stdout.flush()
+
+def getKey(v):
+    v = v.lower()
+    values = list(map(lambda u: u.lower(), user_list.values()))
+    keys = list(user_list.keys())
+
+    return keys[values.index(v)]
 
 def removeUser(socket, e):
     try:
@@ -74,27 +78,22 @@ while True:
 
             elif s == stdin:
                 message = stdin.readline()
-                if message.strip().lower()[:1] == "/":
-                    match message.strip().lower()[1:]:
-                        case "exit":
-                            sendToAll(message)
-                            sout("Closing Server\n")
-                            for c in sockets:
-                                if c != serverSocket and c != stdin:
-                                    removeUser(c, 1)
-                            s.close()
-                            exit()
-                        case "help":
-                            sout(
-                                    "List of commands:\n"
-                                    "/help - Show a list of commands.\n"
-                                    "/ls - Show all online users.\n"
-                                    "/exit - Disconnect all users and close the server.\n"
-                                 )
-                        case "ls":
-                            sout(getUsers())
-                        case _:
-                            sout("Invalid command. Try /help for command list\n")
+                if message[:1] == "/":
+                    parse =  message.strip().lower()[1:]
+                    if parse == "exit":
+                        sendToAll(message)
+                        sout("Closing Server\n")
+                        for c in sockets:
+                            if c != serverSocket and c != stdin:
+                                removeUser(c, 1)
+                        s.close()
+                        exit()
+                    elif parse == "help":
+                        sout("List of commands:\n/help - Show a list of commands.\n/ls - Show all online users.\n/exit - Disconnect all users and close the server.\n")
+                    elif parse == "ls":
+                        sout(getUsers())
+                    else:
+                        sout("Invalid command. Try /help for command list\n")
             else:
                 try:
                     data = s.recv(1024).decode()
@@ -108,12 +107,25 @@ while True:
                                 s.send(f"Welcome to the server {data}!\n".encode())
                                 sendToAll(f"---    User \033[33m{data}\033[0m entered the chat.    ---\n", s, 1)
 
-                        elif data.strip().lower() == "exit":
-                            removeUser(s, 0)
-                            continue
+                        elif data[:1] == "/":
+                            match data[1:].strip().lower():
+                                case "exit":
+                                    removeUser(s, 0)
+                                case "ls":
+                                    s.send(getUsers().encode())
+                                case "help":
+                                    s.send("List of commands:\n/help - Show a list of commands.\n/ls - Show all online users.\n/exit - Disconnect from the server.\n".encode())
+                                case _:
+                                    s.send("Invalid command. Try /help for command list\n".encode())
+
+                        elif data[:data.find(":")].lower() in list(map(lambda u: u.lower(),user_list.values())):
+                            receiver = data[:data.find(":")].strip()
+                            getKey(receiver).send(f"[{user_list[s]} to {receiver}] {data[data.strip().find(":") + 1:]}".encode())
+                            s.send(f"[{user_list[s]} to {receiver}] {data[data.strip().find(":") + 1:]}".encode())
+                            sout(f"[{user_list[s]} to {receiver}] {data[data.strip().find(":") + 1:]}")
 
                         else:
-                            sendToAll(f"[{user_list[s]}] {data}", s, 1)
+                            sendToAll(f"[{user_list[s]}] {data}", serverSocket, 1)
                 except Exception:
                     continue
         except Exception as e:

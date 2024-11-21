@@ -55,7 +55,6 @@ while True:
                             sout(f"Disconnecting from {clientSocket.getpeername()} \n")
                             clientSocket.close()
                             exit()
-                        case "pass":
-                            pass
                         case _:
-                            sout(f"[{user}] {message}")
+                            clientSocket.send(message.encode())
+                # sout(f"[{user}] {message}")
