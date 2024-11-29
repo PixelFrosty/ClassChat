@@ -2,10 +2,27 @@ from socket import socket, AF_INET, SOCK_STREAM
 from select import select
 from sys import stdin, stdout, exit
 from datetime import datetime
+import json
 
 def sout(msg): # ease
     stdout.write(f"[{datetime.now().strftime('%I:%M:%S %p')}] {msg}")
     stdout.flush()
+
+def toJson(status: int, message: str, receiver: str = "", sender: str = ""):
+    # quick function to convert data to json format
+    # status guide:
+        # 0 = name request, only send status and message (the name)
+        # 1 = message
+        # 2 = command request, only send status and message (the command)
+    data = {"status": str(status)}
+    data["time"] = datetime.now().strftime('%Y-%-m-%-d | %H:%M:%S')
+    if status == 1:
+        data["receiver"] = receiver
+        data["sender"] = sender
+    data["message"] = message
+    # time seperated by pipe
+
+    return json.dumps(data)
 
 serverName = ''
 serverPort = 12000
@@ -14,13 +31,14 @@ clientSocket = socket(AF_INET, SOCK_STREAM)
 try:
     clientSocket.connect((serverName, serverPort))
 except Exception:
-    sout("Connection was unsuccesful, ceasing process.")
+    sout("Connection was unsuccesful, please try again later.")
     exit()
 
 acknowledgement = clientSocket.recv(1024).decode()
 sout(f"{acknowledgement}")
 
 user = ""
+# username
 
 sockets = [clientSocket, stdin]
 
@@ -45,16 +63,14 @@ while True:
             if user == "":
                 user = stdin.readline().strip()
                 # TODO: check for valid username
-                clientSocket.send(("%try_user%" + user).encode())
+                clientSocket.send(toJson(0, user).encode())
+                # clientSocket.send(("%try_user%" + user).encode())
             else:
-                message = stdin.readline()
-                clientSocket.send(message.encode())
-                if message.strip().lower()[:1] == "/":
-                    match message.strip().lower()[1:]:
-                        case "exit":
-                            sout(f"Disconnecting from {clientSocket.getpeername()} \n")
-                            clientSocket.close()
-                            exit()
-                        case _:
-                            clientSocket.send(message.encode())
-                # sout(f"[{user}] {message}")
+                data = stdin.readline()
+                # clientSocket.send(message.encode())
+                m = data.find(":")
+                if m != -1:
+                    receiver = data[:m] # everthing before :
+                    message = data[m+2:] # everything after :
+                    clientSocket.send(toJson(1, message, receiver, user).encode())
+                    sout(f"[{user}] {message}")
