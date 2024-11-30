@@ -4,6 +4,49 @@ from sys import stdin, stdout, exit
 from datetime import datetime
 import json
 
+def toJson(status, message, time = "", receiver = "", sender = ""):
+    data = {
+            "status": str(status),
+            "message": message,
+            "receiver": receiver,
+            "sender": sender,
+            }
+    if time == "":
+        data["time"] = datetime.now().strftime('%H:%M:%S')
+    else:
+        data["time"] = time
+    return json.dumps(data)
+
+def name(user):
+    try:
+        names = list(users.keys())
+        if type(user) == str:
+            lowernames = list(map(lambda u: u.lower(), names))
+            i = lowernames.index(user.lower())
+            return names[i]
+        elif type(user) == socket:
+            socks = list(users.values())
+            i = socks.index(user)
+            return names[i]
+        return "-1"
+    except:
+        return "-1"
+
+def removeUser(socket):
+    user = name(socket)
+    del users[user]
+    sockets.remove(socket)
+
+def listUsers():
+    if len(users) == 0:
+        return "\nNo users currently online.\n"
+    lu = "\nList of currently online users:"
+    i = 1
+    for c in users.keys():
+        lu += f"\n[{i}] {c}"
+        i += 1
+    return lu + "\n"
+ 
 serverPort = 12000 
 serverName = ''
 
@@ -14,158 +57,127 @@ serverSocket.bind((serverName,serverPort))
 sockets = [serverSocket, stdin]
 user_list = {}
 
-def toJson(status: int, message: str):
-    # quick function to convert data to json format
-    # status guide:
-        # 0 = name request, only send status and message (the name)
-        # 1 = message
-        # 2 = command request, only send status and message (the command)
-    data = {"status": str(status)}
-    data["time"] = datetime.now().strftime('%Y-%-m-%-d | %H:%M:%S')
-    data["message"] = message
-    # time seperated by pipe
-
-    return json.dumps(data)
-
-def getUsers():
-    if len(user_list) == 0:
-        return "No users currently online.\n"
-        
-    i = 1
-    result = "List of online users:\n"
-    for u in user_list.values():
-        result += f"[{i}] {u}\n"
-        i += 1
-    return result
-
-def sout(msg): # ease
-    stdout.write(f"[{datetime.now().strftime('%I:%M:%S %p')}] {msg}")
-    stdout.flush()
-
-def getKey(v):
-    v = v.lower()
-    values = list(map(lambda u: u.lower(), user_list.values()))
-    keys = list(user_list.keys())
-
-    return keys[values.index(v)]
-
-def removeUser(socket, e):
-    try:
-        if e == 1:
-            pass
-        elif e == 0:
-            sendToAll(f"---    {user_list[socket]} has disconnected.    \n", socket, 1)
-        elif e == "":
-            sendToAll(f"---    Disconnecting {user_list[socket]} for exception    ---\n", socket, 1)
-        else:
-            sendToAll(f"---    Disconnecting {user_list[socket]} for exception {e}    ---\n", socket, 1)
-        del user_list[socket]
-    except Exception as e:
-         sendToAll("---   A user was disconnected for an exception    ---\n", socket, 1)
-    sockets.remove(socket)
-    socket.close()
-
-def sendToAll(data, sender=serverSocket, echo=0):
-    for c in sockets:
-        try:
-            if c != serverSocket and c != stdin and c != sender:
-                c.send(data.encode())
-        except Exception as e:
-            removeUser(c, e)
-    if echo == 1:
-        sout(data)
+users = {}
+# dictionary of users "username": socket
 
 serverSocket.listen(5)
-sout(f"\n---    The server is ready to recieve on {serverName if serverName != '' else serverSocket.getsockname()[0]} : {serverPort}    ---\n\n")
+print(f"The server is ready to recieve on {serverName if serverName != '' else 'localhost'} : {serverPort}")
 
-while True:
-    readable, writable, exceptional = select(sockets, [], sockets)
+try:
+    while True:
+        readable, writable, exceptional = select(sockets, [], sockets)
 
-    for s in readable:
-        try:
+        for s in readable:
             if s == serverSocket:
                 clientSocket, clientAddr = serverSocket.accept()
-                sout(f"---    {clientAddr} has connected to the server.    ---\n")
-                sendToAll("---    A new user has connected    ---\n")
-                clientSocket.send("Connection successful.\nEnter your username: ".encode())
+                print(f"--- {clientAddr} has connected to the server. ---")
+                clientSocket.send(toJson(0, "Connection successful\nEnter your name: ").encode())
+
                 sockets.append(clientSocket)
-
             elif s == stdin:
-                message = stdin.readline()
-                if message[:1] == "/":
-                    parse =  message.strip().lower()[1:]
-                    if parse == "exit":
-                        sendToAll(message)
-                        sout("Closing Server\n")
-                        for c in sockets:
-                            if c != serverSocket and c != stdin:
-                                removeUser(c, 1)
-                        s.close()
-                        exit()
-                    elif parse == "help":
-                        sout("List of commands:\n/help - Show a list of commands.\n/ls - Show all online users.\n/exit - Disconnect all users and close the server.\n")
-                    elif parse == "ls":
-                        sout(getUsers())
-                    else:
-                        sout("Invalid command. Try /help for command list\n")
+                data = stdin.readline()
+                if data[0] == "/":
+                    cmd = data[1:].strip().lower()
+                    match cmd:
+                        case "exit":
+                            print("\nDisconnecting all clients...")
+                            for c in users.copy():
+                                sock = users[c]
+                                sock.send(toJson(2, "shutdown").encode())
+                                removeUser(sock)
+                            print("\nAll users disconnected, shutting down.")
+                            serverSocket.close()
+                            exit()
+                        case "list":
+                            print(listUsers())
+                        case "help":
+                            print(
+                                    "\nList of commands:\n"
+                                    "- /help | Shows list of commands.\n"
+                                    "- /list | Shows list of online users.\n"
+                                    "- /kick | Kick the specified user\n"
+                                    "- /exit | Shutdown the server.\n"
+                                  )
+                        case _:
+                            if cmd[:4] == 'kick':
+                                try:
+                                    user = name(cmd[5:].strip())
+                                    sock = users[user]
+                                    print(f"Kicked {sock.getsockname()} aka {user} from the server.")
+                                    sock.send(toJson(2, "kick").encode())
+                                    removeUser(sock)
+                                except:
+                                    print("Cannot kick, invalid user.\nUsage of /kick | /kick {username}")
+                            else:
+                                print("Invalid command, check /help")
+                else:
+                    print("Invalid command, check /help")
             else:
-                try:
-                    data = s.recv(1024).decode()
-                    if data:
-                        # these are always given
-                        # sender and receiver only if status is 1
-                        message = data["message"]
-                        time = data["message"]
-                        if data["status"] == '0':
-                            if message.lower() in list(map(lambda u: u.lower(),user_list.values())):
-                                s.send(toJson(2, "user_retry").encode()) # tell client to retry
+                rawdata = s.recv(1024)
+                if rawdata:
+                    try:
+                        data = json.loads(rawdata.decode())
+                        sts = data["status"]
+                        msg = data["message"]
+                        sndr = data["sender"]
+                        rec = data["receiver"]
+                        time = data["time"]
+
+                        if sts == '1':
+                            try:
+                                if rec.lower() == 'all':
+                                    newdata = toJson(1, msg, time, "all users", sndr)
+                                    for c in users.values():
+                                        c.send(newdata.encode())
+                                    print(f"[{time}] [{sndr} to all users] {msg}", end="")
+                                else:
+                                    newdata = toJson(1, msg, time, name(rec), sndr)
+                                    users[name(rec)].send(newdata.encode())
+                                    s.send(newdata.encode())
+                                    print(f"[{time}] [{sndr} to {name(rec)}] {msg}", end="")
+                            except Exception as e:
+                                print(f"[{time}] Failed to forward message from {sndr} to {rec}. (Recipient not online)")
+                                s.send(toJson(3, f"Failed to send message, {rec} is not currently online.").encode())
+                                continue
+                        if sts == '0':
+                            if name(msg) in users.keys():
+                                s.send(toJson(0, "retry").encode())
+                                # name already taken
                             else:
-                                user_list[s] = message
-                                s.send(toJson(2, "user_accept").encode())
-                                sendToAll(f"---    User {data} entered the chat.    ---\n", s, 1)
-                        elif data["status"] == '1':
-                            receiver = data["receiver"]
-                            sender = data["sender"]
-
-                            getKey(receiver).send(data.encode())
-                            sout(f"[{user_list[s]} to {receiver}] {message}")
-                    if False:
-                        if data[:10] == "%try_user%":
-                            data = data[10:].strip()
-                            if data.lower() in list(map(lambda u: u.lower(),user_list.values())):
-                                s.send("%0%".encode()) # tell client to retry
-                            else:
-                                user_list[s] = data
-                                s.send(f"Welcome to the server {data}!\n".encode())
-                                sendToAll(f"---    User {data} entered the chat.    ---\n", s, 1)
-
-                        elif data[:1] == "/":
-                            match data[1:].strip().lower():
-                                case "exit":
-                                    removeUser(s, 0)
-                                case "ls":
-                                    s.send(getUsers().encode())
-
-                                case "help":
-
-                                    s.send("List of commands:\n/help - Show a list of commands.\n/ls - Show all online users.\n/exit - Disconnect from the server.\n".encode())
-
-                                case _:
-                                    s.send("Invalid command. Try /help for command list\n".encode())
-
-                        elif data[:data.find(":")].lower() in list(map(lambda u: u.lower(),user_list.values())):
-                            receiver = data[:data.find(":")].strip()
-                            getKey(receiver).send(f"[{user_list[s]} to {receiver}] {data[data.strip().find(":") + 1:]}".encode())
-                            s.send(f"[{user_list[s]} to {receiver}] {data[data.strip().find(":") + 1:]}".encode())
-                            sout(f"[{user_list[s]} to {receiver}] {data[data.strip().find(":") + 1:]}")
-
-                        else:
-                            sendToAll(f"[{user_list[s]}] {data}", serverSocket, 1)
-                except Exception:
-                    continue
-        except Exception as e:
-            removeUser(s,e)
-
-
-    for s in exceptional:
-        removeUser(s, "")
+                                s.send(toJson(0, "accept").encode())
+                                users[msg] = s
+                                print(f"--- User {s.getsockname()} has joined as \"{msg}\" ---")
+                                # add user to list
+                                # dictionary element "username": socket
+                        if sts == '3':
+                            if msg[:4] == 'exit':
+                                print(f"User {s.getsockname()} aka {sndr} has disconnected", end="")
+                                s.send(toJson(2, "exit").encode())
+                                removeUser(s)
+                                if msg[4:] == '_error':
+                                    print("due to an error")
+                                else:
+                                    print()
+                            if msg == 'list':
+                                s.send(toJson(3, listUsers()).encode())
+                                print(f"Listing all users for {sndr}")
+                    except json.JSONDecodeError:
+                        print("not json data")
+except Exception as e:
+    print("\nError occured, disconnecting all clients...")
+    for c in users.copy():
+        sock = users[c]
+        sock.send(toJson(2, "shutdown").encode())
+        removeUser(sock)
+    print("\nAll users disconnected, shutting down.")
+    serverSocket.close()
+    exit()
+except KeyboardInterrupt as e:
+    print("\nProcess interrupted. Disconnecting all clients...")
+    for c in users.copy():
+        sock = users[c]
+        sock.send(toJson(2, "shutdown").encode())
+        removeUser(sock)
+    print("\nAll users disconnected, shutting down.")
+    serverSocket.close()
+    exit()
