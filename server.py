@@ -34,9 +34,15 @@ def name(user):
         return "-1"
 
 def removeUser(socket):
-    user = name(socket)
-    del users[user]
-    sockets.remove(socket)
+    try:
+        user = name(socket)
+        del users[user]
+    except:
+        pass
+    try:
+        sockets.remove(socket)
+    except:
+        pass
 
 def listUsers():
     if len(users) == 0:
@@ -137,12 +143,12 @@ try:
                                     newdata = toJson(1, msg, time, "all users", sndr)
                                     for c in users.values():
                                         c.send(newdata.encode())
-                                    print(f"[{time}] [{sndr} to all users] {msg}", end="")
+                                    print(f"[{time}] [{sndr} to all users] {msg}")
                                 else:
                                     newdata = toJson(1, msg, time, name(rec), sndr)
                                     users[name(rec)].send(newdata.encode())
                                     s.send(newdata.encode())
-                                    print(f"[{time}] [{sndr} to {name(rec)}] {msg}", end="")
+                                    print(f"[{time}] [{sndr} to {name(rec)}] {msg}")
                             except Exception as e:
                                 print(f"[{time}] Failed to forward message from {sndr} to {rec}. (Recipient not online)")
                                 s.send(toJson(3, f"Failed to send message, {rec} is not currently online.").encode())
@@ -159,7 +165,9 @@ try:
                                 # dictionary element "username": socket
                         if sts == '3':
                             if msg[:4] == 'exit':
-                                print(f"User {s.getsockname()} aka {sndr} has disconnected", end="")
+                                if sndr == '':
+                                    sndr = "unnamed"
+                                print(f"User {s.getsockname()} aka {sndr} has disconnected")
                                 s.send(toJson(2, "exit").encode())
                                 removeUser(s)
                                 if msg[4:] == '_error':
