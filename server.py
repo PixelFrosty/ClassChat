@@ -1,7 +1,8 @@
 from socket import SO_REUSEADDR, SOL_SOCKET, socket, AF_INET, SOCK_STREAM
 from select import select
-from sys import stdin, stdout, exit
+from sys import stdin, exit
 from datetime import datetime
+import argparse
 import json
 
 def toJson(status, message, time = "", receiver = "", sender = ""):
@@ -47,8 +48,15 @@ def listUsers():
         i += 1
     return lu + "\n"
  
+parser = argparse.ArgumentParser(description="ClassChat Server")
+
+parser.add_argument('--ip', type=str, default='', help='IP address of the server')
+# used due to WSL setup and communication between native windows and WSL
+
+args = parser.parse_args()
+
 serverPort = 12000 
-serverName = ''
+serverName = args.ip
 
 serverSocket = socket(AF_INET, SOCK_STREAM)
 serverSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
