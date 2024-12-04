@@ -294,7 +294,7 @@ class senderEmitter(QObject):
                         rec = data[:i]
                         msg = data[i + 2:]
                         if rec.lower() == username.lower():
-                            print(f"[{datetime.now().strftime('%H:%M:%S')}] [Echoing to self] {msg}", end="")
+                            print(f"[{datetime.now().strftime('%H:%M:%S')}] [Echoing to self] {msg}")
                             self.textUpdate.emit(f"[{datetime.now().strftime('%H:%M:%S')}] [Echoing to self] {msg}")
                         else:
                             clientSocket.send(toJson(1, msg, rec).encode())
@@ -340,7 +340,7 @@ class outgoingData(QThread):
                         sndr = data["sender"]
                         rec = data["receiver"]
                         time = data["time"]
-                        print(f"[{time}] [{sndr} to {rec}] {msg}", end="")
+                        print(f"[{time}] [{sndr} to {rec}] {msg}")
                         self.textUpdate.emit(f"[{time}] [{sndr} to {rec}] {msg}")
                     if sts == '2':
                         if msg == 'shutdown':

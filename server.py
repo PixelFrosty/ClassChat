@@ -117,7 +117,7 @@ try:
                                 try:
                                     user = name(cmd[5:].strip())
                                     sock = users[user]
-                                    print(f"Kicked {sock.getsockname()} aka {user} from the server.")
+                                    print(f"Kicked {sock.getpeername()} aka {user} from the server.")
                                     sock.send(toJson(2, "kick").encode())
                                     removeUser(sock)
                                 except:
@@ -160,14 +160,14 @@ try:
                             else:
                                 s.send(toJson(0, "accept").encode())
                                 users[msg] = s
-                                print(f"--- User {s.getsockname()} has joined as \"{msg}\" ---")
+                                print(f"--- User {s.getpeername()} has joined as \"{msg}\" ---")
                                 # add user to list
                                 # dictionary element "username": socket
                         if sts == '3':
                             if msg[:4] == 'exit':
                                 if sndr == '':
                                     sndr = "unnamed"
-                                print(f"User {s.getsockname()} aka {sndr} has disconnected")
+                                print(f"User {s.getpeername()} aka {sndr} has disconnected")
                                 s.send(toJson(2, "exit").encode())
                                 removeUser(s)
                                 if msg[4:] == '_error':
