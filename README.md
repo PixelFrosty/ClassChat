@@ -13,6 +13,7 @@ Can be done by creating a virtual python environment using the following:
 For the non GUI version, simply run navigate to the file in your terminal and run `python3 client.py`
 (NOT COMPATIBLE WITH WINDOWS DUE TO `select()` FUNCTION)
 
+##### Windows
 
 Open PowerShell
 `cd` to the location of the GUI client
@@ -44,6 +45,7 @@ To activate the environment
 
 `pip3 install PyQt5`
 To install the dependencies
+(pip required for this step)
 
 And finally: `python3 client.py` to run the client.
 

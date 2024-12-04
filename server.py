@@ -74,7 +74,7 @@ user_list = {}
 users = {}
 # dictionary of users "username": socket
 
-serverSocket.listen(5)
+serverSocket.listen(50)
 print(f"The server is ready to recieve on {serverName if serverName != '' else 'localhost'} : {serverPort}")
 
 try:
