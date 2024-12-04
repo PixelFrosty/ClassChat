@@ -197,11 +197,13 @@ class classChat(QWidget):
         if signedIn:
             data = self.input.text()
             if data:
+                print(data)
                 self.senderObj.sendData(data)
                 self.input.clear()
         else:
             data = self.nameinput.text()
             if data:
+                print(data)
                 self.senderObj.sendData(data)
 
     def send(self, msg):
