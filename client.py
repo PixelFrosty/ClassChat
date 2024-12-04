@@ -28,6 +28,7 @@ class classChat(QWidget):
 
         self.senderObj.invalidName.connect(self.invalidNameNoti)
         self.senderObj.textUpdate.connect(self.send)
+        self.senderObj.kicked.connect(self.kicked)
 
     def setMyStyle(self):
         self.setStyleSheet('''
@@ -46,7 +47,7 @@ class classChat(QWidget):
                            QPushButton{
                                background: #888888;
                                padding: 0.5em;
-                               border-radius: 0.2em;
+                               border-radius: 0.3em;
                                }
 
                            QTextEdit{
@@ -136,6 +137,7 @@ class classChat(QWidget):
 
         self.messages = QTextEdit(self)
         self.messages.setReadOnly(True)
+        self.messages.setPlaceholderText("Messages will appear here.")
         self.mainlayout.addWidget(self.messages)
 
         self.inputDivQW = QWidget()
@@ -233,6 +235,7 @@ def toJson(status, message, receiver = ""):
 class senderEmitter(QObject):
     invalidName = pyqtSignal(int)
     textUpdate = pyqtSignal(str)
+    kicked = pyqtSignal()
     def sendData(self, data):
         global username
         global stop
@@ -255,6 +258,8 @@ class senderEmitter(QObject):
                     match cmd:
                         case "exit":
                             print("\nDisconnecting from server")
+                            self.textUpdate.emit("\n\n\nDisonnected from server.\nFeel free to close the app now.")
+                            self.kicked.emit()
                             clientSocket.send(toJson(3, "exit").encode())
                             stop = False
                             clientSocket.close()
@@ -374,8 +379,37 @@ class incomingData(QThread):
             if self.parent().senderObj.sendData(data) == False:
                 break
 
-app = QApplication(argv)
+# ========================================================================================
 
+def failedConnection():
+    notice = QMessageBox()
+    notice.setWindowTitle("Error")
+    notice.setIcon(QMessageBox.Warning)
+    notice.setText("Unsuccessful connection.\nServer may be closed.\nPlease try again.")
+    notice.setStandardButtons(QMessageBox.Ok)
+    notice.setStyleSheet('''
+                       QWidget{
+                           background: #eeeeee;
+                           padding: 0.5em;
+                           border-radius: 0.5em
+                           }
+
+                       QPushButton{
+                           background: #888888;
+                           padding: 0.5em;
+                           border-radius: 0.3em;
+                           }
+
+                       * {
+                           font-family: Verdana;
+                           font-size: 18px;
+                           font-weight: 300;
+                       }
+
+                       ''')
+    notice.exec_()
+
+app = QApplication(argv)
 
 username = ""
 signedIn = False
@@ -388,6 +422,7 @@ try:
     clientSocket.connect((serverName, serverPort))
 except:
     print("Unable to connect to server.\nTry again later.")
+    failedConnection()
     exit()
 
 stop = True
